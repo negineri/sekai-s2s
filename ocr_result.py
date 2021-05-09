@@ -14,6 +14,16 @@ class ScoreResult:
         self.bad = 0
         self.miss = 0
 
+    def to_dict(self):
+        res = {'title': self.title,
+               'difficulty': self.difficulty,
+               'perfect': self.perfect,
+               'great': self.great,
+               'good': self.good,
+               'bad': self.bad,
+               'miss': self.miss}
+        return res
+
 
 def loadfile(fp: str) -> Optional[ScoreResult]:
     im = Image.open(fp)

@@ -1,42 +1,41 @@
-import discord
 import os
+from flask import Flask, request, render_template
 import requests
 import random
+import json
+import imghdr
 
 import ocr_result
 
-TOKEN = os.environ['DISCORD_BOT_TOKEN']
-client = discord.Client()
 os.makedirs("tmp", exist_ok=True)
 
-
-@client.event
-async def on_message(message):
-    if not message.attachments:
-        return
-    if message.channel.id != 762898538572677140:
-        return
-    if os.path.splitext(message.attachments[0].url)[1] == '.jpg' or os.path.splitext(message.attachments[0].url)[1] == '.png':
-        try:
-            file_data = requests.get(message.attachments[0].url)
-        except requests.exceptions.RequestException as err:
-            print(err)
-            return False
-        file_path = 'tmp/' + str(int(random.random() * 10000000000)) + os.path.splitext(message.attachments[0].url)[1]
-        with open(file_path, mode='wb') as f:
-            f.write(file_data.content)
-        result = ocr_result.loadfile(file_path)
-        os.remove(file_path)
-        if result is None:
-            return
-        channel = client.get_channel(762898538572677140)
-        text = f"{result.title} {result.difficulty}"
-        text += f"\nPERFECT {format(result.perfect, '04')}"
-        text += f"\nGREAT   {format(result.great, '04')}"
-        text += f"\nGOOD    {format(result.good, '04')}"
-        text += f"\nBAD     {format(result.bad, '04')}"
-        text += f"\nMISS    {format(result.miss, '04')}"
-        await channel.send(text)
+app = Flask(__name__)
 
 
-client.run(TOKEN)
+@app.route('/')
+def hello():
+    if request.args.get('src') is None:
+        return render_template("home/index.html")
+    src_url = request.args.get('src')
+    try:
+        file_data = requests.get(src_url)
+    except requests.exceptions.RequestException as err:
+        print(err)
+        return '{message: "有効なURLではありません"}'
+    file_path = 'tmp/' + str(int(random.random() * 10000000000))
+    with open(file_path, mode='wb') as f:
+        f.write(file_data.content)
+    ext = imghdr.what(file_path)
+    if ext is None:
+        return '{message: "非対応の画像形式です"}'
+    os.rename(file_path, file_path + "." + ext)
+    file_path = file_path + "." + ext
+    result = ocr_result.loadfile(file_path)
+    if result is None:
+        return '{message: "スコアを取得出来ませんでした"}'
+    os.remove(file_path)
+    return json.dumps(result.to_dict())
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

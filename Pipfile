@@ -8,6 +8,7 @@ pillow = "*"
 pyocr = "*"
 "discord.py" = "*"
 requests = "*"
+flask = "*"
 
 [dev-packages]
 autopep8 = "*"
